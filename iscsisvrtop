@@ -1,0 +1,321 @@
+#!/usr/bin/ksh
+#
+# iscsisvrtop - display top iSCSI I/O events on a server.
+#
+# This is measuring the response time between an incoming iSCSI operation
+# and its response. In general, this measures the servers view of how
+# quickly it can respond to requests. By default, the list shows responses
+# to each client.
+#
+# Top-level fields:
+#	load	1 min load average
+#	read	total KB read during sample
+#	write	total KB sync writes during sample
+#
+# The following per-client and "all" clients fields are shown
+#	Client	IP addr of client
+#	IOPS	NFS operations per second
+#	Reads	Read operations per second
+#	Writes	Sync write operations per second
+#	Rd(KB)	Read KB/sec
+#	Wr(KB)	Sync write KB/sec
+#	Rd_t	Average read time in microseconds
+#	Wr_t	Average sync write time in microseconds
+#   Align%  Percentage of read/write operations that have LBA aligned to
+#           blocksize (default=4096 bytes)
+#
+# INSPIRATION:  top(1) by William LeFebvre and iotop by Brendan Gregg
+#
+# Copyright 2011, Nexenta Systems, Inc. All rights reserved.
+#
+# CDDL HEADER START
+#
+#  The contents of this file are subject to the terms of the
+#  Common Development and Distribution License, Version 1.0 only
+#  (the "License").  You may not use this file except in compliance
+#  with the License.
+#
+#  You can obtain a copy of the license at Docs/cddl1.txt
+#  or http://www.opensolaris.org/os/licensing.
+#  See the License for the specific language governing permissions
+#  and limitations under the License.
+#
+# CDDL HEADER END
+#
+# Author: Richard.Elling@Nexenta.com
+#
+# Revision:
+#   1.5	12-Jul-2011
+#
+##############################
+# --- Process Arguments ---
+#
+
+### default variables
+opt_blocksize=4096      # blocksize for alignment measurements
+sys_blocksize=512       # default system blocksize
+opt_client=0            # set if -c option set
+opt_clear=1		# set if screen to be cleared
+opt_json=0		# print in JSON format
+opt_top=0		# set if list trimmed to top
+top=0			# number of lines trimmed
+interval=10		# default interval
+count=-1		# number of intervals to show
+
+### process options
+while getopts b:c:Cjm:t: name
+do
+    case $name in
+        b)  opt_blocksize=$OPTARG ;;
+        c)	opt_client=1; client_IP=$OPTARG ;;
+        C)	opt_clear=0 ;;
+        j)	opt_json=1 ;;
+        t)	opt_top=1; top=$OPTARG ;;
+        h|?)	cat <<END >&2
+USAGE: iscsisvrtop [-b blocksize] [-Cj] [-c client_IP] [-t top] 
+                   [interval [count]]
+        -b blocksize   # alignment blocksize (default=4096)
+        -c client_IP   # trace for this client only
+        -C             # don't clear the screen
+        -j             # print output in JSON format
+        -t top         # print top number of entries only
+examples:
+    iscsisvrtop        # default output, 10 second samples
+    iscsisvrtop 1      # 1 second samples
+    iscisvrtop -b 1024 # check alignment on 1KB boundary
+    iscsisvrtop -C 60  # 60 second samples, do not clear screen
+    iscsisvrtop -t 20  # print top 20 lines only
+    iscsisvrtop 5 12   # print 12 x 5 second samples
+END
+		exit 1
+	esac
+done
+
+shift $(( $OPTIND - 1 ))
+
+### option logic
+if [[ "$1" > 0 ]]; then
+    interval=$1; shift
+fi
+if [[ "$1" > 0 ]]; then
+    count=$1; shift
+fi
+if (( opt_clear )); then
+    clearstr=$(clear)
+else
+    clearstr=""
+fi
+
+
+
+#################################
+# --- Main Program, DTrace ---
+#
+/usr/sbin/dtrace -n '
+/*
+ * Command line arguments
+ */
+inline int OPT_blocksize = '$opt_blocksize' / '$sys_blocksize';
+inline int OPT_client	= '$opt_client';
+inline int OPT_clear 	= '$opt_clear';
+inline int OPT_json	= '$opt_json';
+inline int OPT_top 	= '$opt_top';
+inline int INTERVAL 	= '$interval';
+inline int COUNTER 	= '$count';
+inline int TOP 	= '$top';
+inline string CLIENT	= "'$client_IP'";
+inline string CLEAR 	= "'$clearstr'";
+
+#pragma D option quiet
+
+/* increase dynvarsize if you get "dynamic variable drops" */
+#pragma D option dynvarsize=8m
+
+/*
+ * Print header
+ */
+dtrace:::BEGIN 
+{
+    /* starting values */
+    counts = COUNTER;
+    secs = INTERVAL;
+    total_bytes_read = 0;
+    total_bytes_write = 0;
+
+    printf("Tracing... Please wait.\n");
+}
+
+/*
+ * Filter as needed, based on starts
+ */
+iscsi:::xfer-start,
+iscsi:::nop-receive
+/OPT_client == 0 || CLIENT == args[0]->ci_remote/
+{ 
+    @count_iops[args[0]->ci_remote] = count();
+    OPT_client == 0 ? @count_iops["all"] = count() : 1;
+    ts[arg1] = timestamp;
+}
+
+/* 
+ * read operations 
+ */
+iscsi:::xfer-done 
+/ts[arg1] != 0 && arg8 != 0/
+{
+    t = timestamp - ts[arg1];
+    @count_read[args[0]->ci_remote] = count();
+    OPT_client == 0 ? @count_read["all"] = count() : 1;
+    @avgtime_read[args[0]->ci_remote] = avg(t);
+    OPT_client == 0 ? @avgtime_read["all"] = avg(t) : 1;
+    @bytes_read[args[0]->ci_remote] = sum(args[2]->xfer_len);
+    OPT_client == 0 ? @bytes_read["all"] = sum(args[2]->xfer_len) : 1;
+    @avg_bytes_read[args[0]->ci_remote] = avg(args[2]->xfer_len);
+    OPT_client == 0 ? @avg_bytes_read["all"] = avg(args[2]->xfer_len) : 1;
+    total_bytes_read += args[2]->xfer_len;
+    ts[arg1] = 0;
+}
+
+/*
+ * write operations
+ */
+iscsi:::xfer-done 
+/ts[arg1] != 0 && arg8 == 0/
+{
+    t = timestamp - ts[arg1];
+    @count_write[args[0]->ci_remote] = count();
+    OPT_client == 0 ? @count_write["all"] = count() : 1;
+    @avgtime_write[args[0]->ci_remote] = avg(t);
+    OPT_client == 0 ? @avgtime_write["all"] = avg(t) : 1;
+    @bytes_write[args[0]->ci_remote] = sum(args[2]->xfer_len);
+    OPT_client == 0 ? @bytes_write["all"] = sum(args[2]->xfer_len) : 1;
+    @avg_bytes_write[args[0]->ci_remote] = avg(args[2]->xfer_len);
+    OPT_client == 0 ? @avg_bytes_write["all"] = avg(args[2]->xfer_len) : 1;
+    total_bytes_write += args[2]->xfer_len;
+    @avg_aligned[args[0]->ci_remote] = 
+    avg((args[2]->xfer_loffset % OPT_blocksize) ? 0 : 100);
+    ts[arg1] = 0;
+}
+
+/*
+ * nops are ops too!
+ */
+iscsi:::nop-send
+/ts[arg1] != 0/
+{
+    t = timestamp - ts[arg1];
+    @count_nop[args[0]->ci_remote] = count();
+    OPT_client == 0 ? @count_nop["all"] = count() : 1;
+    @avgtime_nop[args[0]->ci_remote] = avg(t);
+    OPT_client == 0 ? @avgtime_nop["all"] = avg(t) : 1;
+    ts[arg1] = 0;
+} 
+
+/*
+ * timer
+ */
+profile:::tick-1sec
+{
+    secs--;
+}
+
+/*
+ * Print report
+ */
+profile:::tick-1sec
+/secs == 0/
+{	
+    /* fetch 1 min load average */
+    self->load1a  = `hp_avenrun[0] / 65536;
+    self->load1b  = ((`hp_avenrun[0] % 65536) * 100) / 65536;
+
+    /* convert counters to Kbytes */
+    total_bytes_read /= 1024;
+    total_bytes_write /= 1024;
+
+    /* normalize to seconds giving a rate */
+    /* todo: this should be measured, not based on the INTERVAL */
+    normalize(@count_iops, INTERVAL);
+    normalize(@count_read, INTERVAL);
+    normalize(@count_write, INTERVAL);
+    normalize(@count_nop, INTERVAL);
+
+    /* normalize to KB per second */
+    normalize(@bytes_read, 1024 * INTERVAL);
+    normalize(@avg_bytes_read, 1024 * INTERVAL);
+    normalize(@bytes_write, 1024 * INTERVAL);
+    normalize(@avg_bytes_write, 1024 * INTERVAL);
+
+    /* normalize average to microseconds */
+    normalize(@avgtime_read, 1000);
+    normalize(@avgtime_write, 1000);
+    normalize(@avgtime_nop, 1000);
+
+    /* print status */
+    OPT_clear && !OPT_json ? printf("%s", CLEAR) : 1;
+
+    OPT_json ?
+        printf("{ \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB\": %d, \"write_KB\": %d, \n \"sample\": [",
+            walltimestamp, walltimestamp, INTERVAL, 
+            self->load1a, self->load1b, 
+            total_bytes_read, total_bytes_write)
+    :
+        printf("%Y load: %d.%02d read_KB: %d write_KB: %d\n",
+            walltimestamp, self->load1a, self->load1b, 
+            total_bytes_read, total_bytes_write);
+
+    /* print headers */
+    OPT_json ? 1 :
+        printf("%-15s\t%7s\t%7s\t%7s\t%7s\t%7s\t%7s\t%7s\t%7s\t%7s\t%7s\t%7s\t%7s\n",
+            "client", "ops", "reads", "writes", "nops", "rd_bw", "wr_bw",
+            "ard_sz", "awr_sz", "rd_t", "wr_t", "nop_t", "align%");
+
+    /* truncate to top lines if needed */
+    OPT_top ? trunc(@count_iops, TOP) : 1;
+
+    OPT_json ?
+        printa("{\"address\": \"%s\", \"iops\": %@d, \"reads\": %@d, \"writes\": %@d, \"nops\": %@d, \"read bw\": %@d, \"write bw\": %@d, \"avg read size\": %@d, \"avg write size\": %@d, \"avg read time\": %@d, \"avg write time\": %@d, \"avg nop time\": %@d, \"aligned%%\": %@d},\n",
+            @count_iops, @count_read, @count_write, @count_nop,
+            @bytes_read, @bytes_write, @avg_bytes_read, @avg_bytes_write,
+            @avgtime_read, @avgtime_write, @avgtime_nop, @avg_aligned)
+    :
+        printa("%-15s\t%7@d\t%7@d\t%7@d\t%7@d\t%7@d\t%7@d\t%7@d\t%7@d\t%7@d\t%7@d\t%7@d\t%7@d\n",
+            @count_iops, @count_read, @count_write, @count_nop,
+            @bytes_read, @bytes_write, @avg_bytes_read, @avg_bytes_write,
+            @avgtime_read, @avgtime_write, @avgtime_nop, @avg_aligned);
+
+    OPT_json ? printf("]}\n") : 1;
+
+    /* clear data */
+    trunc(@count_iops); trunc(@count_read); trunc(@count_write); 
+    trunc(@count_nop); trunc(@bytes_read); trunc(@bytes_write);
+    trunc(@avg_bytes_read); trunc(@avg_bytes_write);
+    trunc(@avgtime_read); trunc(@avgtime_write); trunc(@avgtime_nop);
+    trunc(@avg_aligned);
+    total_bytes_read = 0;
+    total_bytes_write = 0;
+    secs = INTERVAL;
+    counts--;
+}
+
+/*
+ * end of program 
+ */
+profile:::tick-1sec
+/counts == 0/
+{
+    exit(0);
+}
+
+/*
+ * clean up when interrupted
+ */
+dtrace:::END
+{
+    trunc(@count_iops); trunc(@count_read); trunc(@count_write); 
+    trunc(@count_nop); trunc(@bytes_read); trunc(@bytes_write);
+    trunc(@avg_bytes_read); trunc(@avg_bytes_write);
+    trunc(@avgtime_read); trunc(@avgtime_write); trunc(@avgtime_nop);
+    trunc(@avg_aligned);
+}
+'
