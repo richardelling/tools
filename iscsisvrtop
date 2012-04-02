@@ -26,6 +26,7 @@
 #
 # INSPIRATION:  top(1) by William LeFebvre and iotop by Brendan Gregg
 #
+# Copyright 2012, Richard Elling, All rights reserved.
 # Copyright 2011, Nexenta Systems, Inc. All rights reserved.
 #
 # CDDL HEADER START
@@ -42,10 +43,10 @@
 #
 # CDDL HEADER END
 #
-# Author: Richard.Elling@Nexenta.com
+# Author: Richard.Elling@RichardElling.com
 #
 # Revision:
-#   1.5	12-Jul-2011
+#   1.6  22-mar-2012
 #
 ##############################
 # --- Process Arguments ---
@@ -161,7 +162,7 @@ iscsi:::nop-receive
  * read operations 
  */
 iscsi:::xfer-done 
-/ts[arg1] != 0 && arg8 != 0/
+/ts[arg1] != 0 && args[2]->xfer_type == 0/
 {
     t = timestamp - ts[arg1];
     @count_read[args[0]->ci_remote] = count();
@@ -180,7 +181,7 @@ iscsi:::xfer-done
  * write operations
  */
 iscsi:::xfer-done 
-/ts[arg1] != 0 && arg8 == 0/
+/ts[arg1] != 0 && args[2]->xfer_type == 1/
 {
     t = timestamp - ts[arg1];
     @count_write[args[0]->ci_remote] = count();
