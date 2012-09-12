@@ -50,8 +50,10 @@
 #
 # Revision:
 #   1.0	11-Jul-2011
+#   1.1 12-Sep-2012
 #
 # TODO: share filter
+# TODO: IPv6 support
 
 ##############################
 # --- Process Arguments ---
@@ -63,12 +65,13 @@ opt_client=0        # set if -c option set
 opt_clear=1         # set if screen to be cleared
 opt_json=0          # set if output is JSON
 opt_top=0           # set if list trimmed to top
+opt_wsname=0        # set if workstation name desired rather than IPv4 addr
 top=0               # number of lines trimmed
 interval=10         # default interval
 count=-1            # number of intervals to show
 
 ### process options
-while getopts b:c:Cjt: name
+while getopts b:c:Cjt:w name
 do
     case $name in
         b)  opt_blocksize=$OPTARG ;;
@@ -76,6 +79,7 @@ do
         C)  opt_clear=0 ;;
         j)  opt_json=1 ;;
         t)  opt_top=1; top=$OPTARG ;;
+        w)  opt_wsname=1 ;;
         h|?)    cat <<END >&2
 USAGE: cifssvrtop [-Cj] [-b blocksize] [-c client_ws] [-t top] 
                  [interval [count]]
@@ -84,6 +88,7 @@ USAGE: cifssvrtop [-Cj] [-b blocksize] [-c client_ws] [-t top]
              -C           # don't clear the screen
              -j           # print output in JSON format
              -t top       # print top number of entries only
+             -w           # print workstation name instead of IPv4 addr
    examples:
      cifssvrtop         # default output, 10 second samples
      cifssvrtop -b 1024 # check alignment on 1KB boundary
@@ -123,6 +128,7 @@ inline int OPT_clear 	= '$opt_clear';
 inline int OPT_client   = '$opt_client';
 inline int OPT_top 	= '$opt_top';
 inline int OPT_json	= '$opt_json';
+inline int OPT_wsname = '$opt_wsname';
 inline int INTERVAL 	= '$interval';
 inline int COUNTER 	= '$count';
 inline int TOP          = '$top';
@@ -154,12 +160,15 @@ dtrace:::BEGIN
 sdt:smbsrv::-smb_op-*-start
 {
     self->sr = (smb_request_t *)arg0;
+    self->ipaddr = inet_ntoa((ipaddr_t *)&self->sr->session->ipaddr);
+    self->wsname = stringof(self->sr->session->workstation);
+    self->me = OPT_wsname == 0 ? self->ipaddr : self->wsname;
 }
 
 sdt:smbsrv::-smb_op-*-start
-/self->sr && (OPT_client == 0 || CLIENT == self->sr->session->workstation)/
+/self->sr && (OPT_client == 0 || CLIENT == self->me)/
 { 
-    @c_cifsops[self->sr->session->workstation] = count();
+    @c_cifsops[self->me] = count();
     OPT_client == 0 ? @c_cifsops["all"] = count() : 1;
 }
 
@@ -169,16 +178,10 @@ sdt:smbsrv::-smb_op-Read-start,
 sdt:smbsrv::-smb_op-WriteX-start,
 sdt:smbsrv::-smb_op-WriteRaw-start,
 sdt:smbsrv::-smb_op-Write-start
-/self->sr && (OPT_client == 0 || CLIENT == self->sr->session->workstation)/
+/self->sr && (OPT_client == 0 || CLIENT == self->me)/
 { 
     self->startts = timestamp;
 }
-
-/* useful structs
- * self->sr = (smb_request_t *)arg0;
- * self->sr->session->workstation
- *self->rw_param = (smb_rw_param_t *)arg1;
- */
 
 /*
  * read
@@ -189,12 +192,12 @@ sdt:smbsrv::-smb_op-Read-start
 /self->startts/
 {
     self->rwp = (smb_rw_param_t *)arg1;
-    @c_read[self->sr->session->workstation] = count();
+    @c_read[self->me] = count();
     OPT_client == 0 ? @c_read["all"] = count() : 1;
-    @read_bw[self->sr->session->workstation] = sum(self->rwp->rw_count);
+    @read_bw[self->me] = sum(self->rwp->rw_count);
     OPT_client == 0 ? @read_bw["all"] = sum(self->rwp->rw_count) : 1;
     total_read_bw += self->rwp->rw_count;
-    @avg_aligned[self->sr->session->workstation] = 
+    @avg_aligned[self->me] = 
         avg((self->rwp->rw_offset % OPT_blocksize) ? 0 : 100);
     @avg_aligned["all"] = 
         avg((self->rwp->rw_offset % OPT_blocksize) ? 0 : 100);
@@ -206,7 +209,7 @@ sdt:smbsrv::-smb_op-Read-done
 /self->startts && self->sr/
 {
     t = timestamp - self->startts;
-    @avgtime_read[self->sr->session->workstation] = avg(t);
+    @avgtime_read[self->me] = avg(t);
     OPT_client == 0 ? @avgtime_read["all"] = avg(t) : 1;
     self->startts = 0;
 }
@@ -220,12 +223,12 @@ sdt:smbsrv::-smb_op-Write-start
 /self->startts && self->sr/
 {
     self->rwp = (smb_rw_param_t *)arg1;
-    @c_write[self->sr->session->workstation] = count();
+    @c_write[self->me] = count();
     OPT_client == 0 ? @c_write["all"] = count() : 1;
-    @write_bw[self->sr->session->workstation] = sum(self->rwp->rw_count);
+    @write_bw[self->me] = sum(self->rwp->rw_count);
     OPT_client == 0 ? @write_bw["all"] = sum(self->rwp->rw_count) : 1;
     total_write_bw += self->rwp->rw_count;
-    @avg_aligned[self->sr->session->workstation] = 
+    @avg_aligned[self->me] = 
         avg((self->rwp->rw_offset % OPT_blocksize) ? 0 : 100);
     @avg_aligned["all"] = 
         avg((self->rwp->rw_offset % OPT_blocksize) ? 0 : 100);
@@ -237,7 +240,7 @@ sdt:smbsrv::-smb_op-Write-done
 /self->startts && self->sr/
 {
 	t = timestamp - self->startts;
-	@avgtime_write[self->sr->session->workstation] = avg(t);
+	@avgtime_write[self->me] = avg(t);
 	OPT_client == 0 ? @avgtime_write["all"] = avg(t) : 1;
 	self->startts = 0;
 }
