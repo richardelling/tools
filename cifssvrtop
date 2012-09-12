@@ -13,7 +13,7 @@
 #   write   total KB sync writes during sample
 #
 # The following per-client and "all" clients fields are shown
-#   Client  Client workstation name
+#   Client  Client IPv4 address or workstation name
 #   CIFSOPS CIFS operations per second
 #   Reads   Read operations per second
 #   Writes  Write operations per second
