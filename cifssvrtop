@@ -305,7 +305,7 @@ profile:::tick-1sec
     OPT_top ? trunc(@c_cifsops, TOP) : 1;
 
     OPT_json ?
-        printa("{\"client\": \"%s\", \"cifsOPS\": %@d, \"reads\": %@d, \"writes\": %@d, \"read bw\": %@d, \"write bw\": %@d, \"avg read time\": %@d, \"avg write time\": %@d, \"aligned%%\", %@d },\n",
+        printa("{\"client\": \"%s\", \"cifsOPS\": %@d, \"reads\": %@d, \"writes\": %@d, \"read bw\": %@d, \"write bw\": %@d, \"avg read time\": %@d, \"avg write time\": %@d, \"aligned%%\": %@d },\n",
             @c_cifsops, @c_read, @c_write, @read_bw, @write_bw,
             @avgtime_read, @avgtime_write, @avg_aligned)
     :
@@ -313,7 +313,7 @@ profile:::tick-1sec
             @c_cifsops, @c_read, @c_write, @read_bw, @write_bw,
             @avgtime_read, @avgtime_write, @avg_aligned);
 
-    OPT_json ? printf("]}\n") : 1;
+    OPT_json ? printf("{}]}\n") : 1;
 
     /* clear data */
     trunc(@c_cifsops); trunc(@c_read); trunc(@c_write); 

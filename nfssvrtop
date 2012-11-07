@@ -461,7 +461,7 @@ profile:::tick-1sec
 	OPT_top ? trunc(@c_nfsops, TOP) : 1;
 
 	OPT_json ?
-		printa("{\"version\": \"%s\", \"address\": \"%s\", \"NFSOPS\": %@d, \"reads\": %@d, \"sync writes\": %@d, \"async writes\": %@d, \"commits\": %@d, \"read bw\": %@d, \"sync write bw\": %@d, \"async write bw\": %@d, \"avg read time\": %@d, \"avg sync write time\": %@d, \"avg async write time\": %@d, \"avg commit time\", %@d, \"aligned%%\", %@d },\n",
+		printa("{\"version\": \"%s\", \"address\": \"%s\", \"NFSOPS\": %@d, \"reads\": %@d, \"sync writes\": %@d, \"async writes\": %@d, \"commits\": %@d, \"read bw\": %@d, \"sync write bw\": %@d, \"async write bw\": %@d, \"avg read time\": %@d, \"avg sync write time\": %@d, \"avg async write time\": %@d, \"avg commit time\": %@d, \"aligned%%\": %@d },",
 			@c_nfsops, @c_read_client, @c_swrite_client, @c_awrite_client, 
             @c_commit_client, @read_b, @swrite_b, @awrite_b,
 			@avgtime_read, @avgtime_swrite, @avgtime_awrite,
@@ -473,7 +473,7 @@ profile:::tick-1sec
 			@avgtime_read, @avgtime_swrite, @avgtime_awrite,
 			@avgtime_commit, @avg_aligned);
 	
-	OPT_json ? printf("]}\n") : 1;
+	OPT_json ? printf("{}]}\n") : 1;
 
 	/* clear data */
 	trunc(@c_nfsops); trunc(@c_read_client); trunc(@c_swrite_client); 

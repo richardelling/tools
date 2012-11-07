@@ -275,7 +275,7 @@ profile:::tick-1sec
     OPT_top ? trunc(@count_iops, TOP) : 1;
 
     OPT_json ?
-        printa("{\"address\": \"%s\", \"iops\": %@d, \"reads\": %@d, \"writes\": %@d, \"nops\": %@d, \"read bw\": %@d, \"write bw\": %@d, \"avg read size\": %@d, \"avg write size\": %@d, \"avg read time\": %@d, \"avg write time\": %@d, \"avg nop time\": %@d, \"aligned%%\": %@d},\n",
+        printa("{\"address\": \"%s\", \"iops\": %@d, \"reads\": %@d, \"writes\": %@d, \"nops\": %@d, \"read bw\": %@d, \"write bw\": %@d, \"avg read size\": %@d, \"avg write size\": %@d, \"avg read time\": %@d, \"avg write time\": %@d, \"avg nop time\": %@d, \"aligned%%\": %@d},",
             @count_iops, @count_read, @count_write, @count_nop,
             @bytes_read, @bytes_write, @avg_bytes_read, @avg_bytes_write,
             @avgtime_read, @avgtime_write, @avgtime_nop, @avg_aligned)
@@ -285,7 +285,7 @@ profile:::tick-1sec
             @bytes_read, @bytes_write, @avg_bytes_read, @avg_bytes_write,
             @avgtime_read, @avgtime_write, @avgtime_nop, @avg_aligned);
 
-    OPT_json ? printf("]}\n") : 1;
+    OPT_json ? printf("{}]}\n") : 1;
 
     /* clear data */
     trunc(@count_iops); trunc(@count_read); trunc(@count_write); 
