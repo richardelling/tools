@@ -440,7 +440,7 @@ profile:::tick-1sec
 	OPT_clear && !OPT_json ? printf("%s", CLEAR) : 1;
 	
 	OPT_json ? 
-		printf("{ \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read (KB)\": %d, \"sync write (KB)\": %d, \"async write (KB)\": %d,\n \"sample\": [",
+		printf("{ \"collector\": \"nfssvrtop\", \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB_int\": %d, \"sync_write_KB_int\": %d, \"async_write_KB_int\": %d,\n \"clientdata\": [",
 			walltimestamp, walltimestamp, INTERVAL, 
 			self->load1a, self->load1b, 
 			total_read_b, total_swrite_b, total_awrite_b)
@@ -461,7 +461,7 @@ profile:::tick-1sec
 	OPT_top ? trunc(@c_nfsops, TOP) : 1;
 
 	OPT_json ?
-		printa("{\"version\": \"%s\", \"address\": \"%s\", \"NFSOPS\": %@d, \"reads\": %@d, \"sync writes\": %@d, \"async writes\": %@d, \"commits\": %@d, \"read bw\": %@d, \"sync write bw\": %@d, \"async write bw\": %@d, \"avg read time\": %@d, \"avg sync write time\": %@d, \"avg async write time\": %@d, \"avg commit time\": %@d, \"aligned%%\": %@d },",
+		printa("{\"version\": \"%s\", \"address\": \"%s\", \"NFSOPS\": %@d, \"reads\": %@d, \"sync_writes\": %@d, \"async_writes\": %@d, \"commits\": %@d, \"read_bw\": %@d, \"sync_write_bw\": %@d, \"async_write_bw\": %@d, \"avg_read_t\": %@d, \"avg_sync_write_t\": %@d, \"avg_async_write_t\": %@d, \"avg_commit_t\": %@d, \"aligned_pct\": %@d },",
 			@c_nfsops, @c_read_client, @c_swrite_client, @c_awrite_client, 
             @c_commit_client, @read_b, @swrite_b, @awrite_b,
 			@avgtime_read, @avgtime_swrite, @avgtime_awrite,
