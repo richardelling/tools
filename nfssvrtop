@@ -56,13 +56,25 @@
 #
 # CDDL HEADER END
 #
-# Author: Richard.Elling@Nexenta.com
+# Author: Richard.Elling@RichardElling.com
 #
 # Revision:
-#   1.5	11-Jul-2011
+#   1.8	29-Nov-2012
 #
 # TODO: running count of nfsd threads (done efficiently)
 # TODO: mount point filter
+PATH=/usr/sbin:/usr/bin
+
+##############################
+# check to see if the NFS server module is loaded
+# if not, then the dtrace probes will fail ungracefully
+if [ "$(uname -s)" = "SunOS" ]; then
+	modinfo | awk '{print $6}' | grep -q nfssrv
+	if [ $? != 0 ]; then
+		echo "error: NFS server module is not loaded, are you serving NFS?"
+		exit 1
+	fi
+fi
 
 ##############################
 # --- Process Arguments ---

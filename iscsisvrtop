@@ -46,8 +46,21 @@
 # Author: Richard.Elling@RichardElling.com
 #
 # Revision:
-#   1.6  22-mar-2012
+#   1.9  29-Nov-2012
 #
+PATH=/usr/sbin:/usr/bin
+
+##############################
+# check to see if the NFS server module is loaded
+# if not, then the dtrace probes will fail ungracefully
+if [ "$(uname -s)" = "SunOS" ]; then
+	modinfo | awk '{print $6}' | grep -q iscsit
+	if [ $? != 0 ]; then
+		echo "error: iSCSI target module is not loaded, are you serving iSCSI?"
+		exit 1
+	fi
+fi
+
 ##############################
 # --- Process Arguments ---
 #
@@ -256,7 +269,7 @@ profile:::tick-1sec
     OPT_clear && !OPT_json ? printf("%s", CLEAR) : 1;
 
     OPT_json ?
-        printf("{ \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB\": %d, \"write_KB\": %d, \n \"sample\": [",
+        printf("{ \"collector\": \"iscsisvrtop\", \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB_int\": %d, \"write_KB_int\": %d, \n \"clientdata\": [",
             walltimestamp, walltimestamp, INTERVAL, 
             self->load1a, self->load1b, 
             total_bytes_read, total_bytes_write)
@@ -275,7 +288,7 @@ profile:::tick-1sec
     OPT_top ? trunc(@count_iops, TOP) : 1;
 
     OPT_json ?
-        printa("{\"address\": \"%s\", \"iops\": %@d, \"reads\": %@d, \"writes\": %@d, \"nops\": %@d, \"read bw\": %@d, \"write bw\": %@d, \"avg read size\": %@d, \"avg write size\": %@d, \"avg read time\": %@d, \"avg write time\": %@d, \"avg nop time\": %@d, \"aligned%%\": %@d},",
+        printa("{\"address\": \"%s\", \"iops\": %@d, \"reads\": %@d, \"writes\": %@d, \"nops\": %@d, \"read_bw\": %@d, \"write_bw\": %@d, \"avg_read_size\": %@d, \"avg_write_size\": %@d, \"avg_read_t\": %@d, \"avg_write_t\": %@d, \"avg_nop_t\": %@d, \"aligned_pct\": %@d},",
             @count_iops, @count_read, @count_write, @count_nop,
             @bytes_read, @bytes_write, @avg_bytes_read, @avg_bytes_write,
             @avgtime_read, @avgtime_write, @avgtime_nop, @avg_aligned)

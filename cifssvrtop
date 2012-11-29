@@ -50,11 +50,22 @@
 # Author: Richard.Elling@Nexenta.com
 #
 # Revision:
-#   1.0	11-Jul-2011
-#   1.1 12-Sep-2012
+#   1.9	29-Nov-2012
 #
 # TODO: share filter
 # TODO: IPv6 support
+PATH=/usr/sbin:/usr/bin
+
+##############################
+# check to see if the NFS server module is loaded
+# if not, then the dtrace probes will fail ungracefully
+if [ "$(uname -s)" = "SunOS" ]; then
+	modinfo | awk '{print $6}' | grep -q smbsrv
+	if [ $? != 0 ]; then
+		echo "error: SMB server module is not loaded, are you serving SMB (CIFS)?"
+		exit 1
+	fi
+fi
 
 ##############################
 # --- Process Arguments ---
@@ -286,7 +297,7 @@ profile:::tick-1sec
     OPT_clear && !OPT_json ? printf("%s", CLEAR) : 1;
 
     OPT_json ? 
-        printf("{ \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read (KB)\": %d, \"write (KB)\": %d, \n \"sample\": [",
+        printf("{ \"collector\": \"cifssvrtop\", \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB_int\": %d, \"write_KB_int\": %d, \n \"clientdata\": [",
             walltimestamp, walltimestamp, INTERVAL, 
             self->load1a, self->load1b, 
             total_read_bw, total_write_bw)
@@ -305,7 +316,7 @@ profile:::tick-1sec
     OPT_top ? trunc(@c_cifsops, TOP) : 1;
 
     OPT_json ?
-        printa("{\"client\": \"%s\", \"cifsOPS\": %@d, \"reads\": %@d, \"writes\": %@d, \"read bw\": %@d, \"write bw\": %@d, \"avg read time\": %@d, \"avg write time\": %@d, \"aligned%%\": %@d },\n",
+        printa("{\"client\": \"%s\", \"CIFSOPS\": %@d, \"reads\": %@d, \"writes\": %@d, \"read_bw\": %@d, \"write_bw\": %@d, \"avg_read_t\": %@d, \"avg_write_t\": %@d, \"aligned_pct\": %@d },\n",
             @c_cifsops, @c_read, @c_write, @read_bw, @write_bw,
             @avgtime_read, @avgtime_write, @avg_aligned)
     :
