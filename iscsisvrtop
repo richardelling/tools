@@ -84,12 +84,12 @@ USAGE: iscsisvrtop [-b blocksize] [-Cj] [-c client_IP] [-t top]
         -j             # print output in JSON format
         -t top         # print top number of entries only
 examples:
-    iscsisvrtop        # default output, 10 second samples
-    iscsisvrtop 1      # 1 second samples
-    iscisvrtop -b 1024 # check alignment on 1KB boundary
-    iscsisvrtop -C 60  # 60 second samples, do not clear screen
-    iscsisvrtop -t 20  # print top 20 lines only
-    iscsisvrtop 5 12   # print 12 x 5 second samples
+    iscsisvrtop         # default output, 10 second samples
+    iscsisvrtop 1       # 1 second samples
+    iscsisvrtop -b 1024 # check alignment on 1KB boundary
+    iscsisvrtop -C 60   # 60 second samples, do not clear screen
+    iscsisvrtop -t 20   # print top 20 lines only
+    iscsisvrtop 5 12    # print 12 x 5 second samples
 END
 		exit 1
 	esac
