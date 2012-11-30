@@ -14,15 +14,18 @@
 #
 # The following per-client and "all" clients fields are shown
 #	Client	IP addr of client
-#	IOPS	NFS operations per second
+#	OPS	iSCSI operations per second
 #	Reads	Read operations per second
 #	Writes	Sync write operations per second
-#	Rd(KB)	Read KB/sec
-#	Wr(KB)	Sync write KB/sec
+#	NOPS	NOP operations per second
+#	Rd_bw	Read KB/sec
+#	Wr_bw	Sync write KB/sec
+#	ARd_sz	Average read size (KB)
+#	AWr_sz	Average write size (KB)
 #	Rd_t	Average read time in microseconds
 #	Wr_t	Average sync write time in microseconds
-#   Align%  Percentage of read/write operations that have LBA aligned to
-#           blocksize (default=4096 bytes)
+#	Align%	Percentage of read/write operations that have LBA aligned to
+#		blocksize (default=4096 bytes)
 #
 # INSPIRATION:  top(1) by William LeFebvre and iotop by Brendan Gregg
 #
