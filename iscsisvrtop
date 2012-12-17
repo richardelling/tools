@@ -14,15 +14,18 @@
 #
 # The following per-client and "all" clients fields are shown
 #	Client	IP addr of client
-#	IOPS	NFS operations per second
+#	OPS	iSCSI operations per second
 #	Reads	Read operations per second
 #	Writes	Sync write operations per second
-#	Rd(KB)	Read KB/sec
-#	Wr(KB)	Sync write KB/sec
+#	NOPS	NOP operations per second
+#	Rd_bw	Read KB/sec
+#	Wr_bw	Sync write KB/sec
+#	ARd_sz	Average read size (KB)
+#	AWr_sz	Average write size (KB)
 #	Rd_t	Average read time in microseconds
 #	Wr_t	Average sync write time in microseconds
-#   Align%  Percentage of read/write operations that have LBA aligned to
-#           blocksize (default=4096 bytes)
+#	Align%	Percentage of read/write operations that have LBA aligned to
+#		blocksize (default=4096 bytes)
 #
 # INSPIRATION:  top(1) by William LeFebvre and iotop by Brendan Gregg
 #
@@ -94,12 +97,12 @@ USAGE: iscsisvrtop [-b blocksize] [-Cj] [-c client_IP] [-t top]
         -j             # print output in JSON format
         -t top         # print top number of entries only
 examples:
-    iscsisvrtop        # default output, 10 second samples
-    iscsisvrtop 1      # 1 second samples
-    iscisvrtop -b 1024 # check alignment on 1KB boundary
-    iscsisvrtop -C 60  # 60 second samples, do not clear screen
-    iscsisvrtop -t 20  # print top 20 lines only
-    iscsisvrtop 5 12   # print 12 x 5 second samples
+    iscsisvrtop         # default output, 10 second samples
+    iscsisvrtop 1       # 1 second samples
+    iscsisvrtop -b 1024 # check alignment on 1KB boundary
+    iscsisvrtop -C 60   # 60 second samples, do not clear screen
+    iscsisvrtop -t 20   # print top 20 lines only
+    iscsisvrtop 5 12    # print 12 x 5 second samples
 END
 		exit 1
 	esac
