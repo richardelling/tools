@@ -452,7 +452,7 @@ profile:::tick-1sec
 	OPT_clear && !OPT_json ? printf("%s", CLEAR) : 1;
 	
 	OPT_json ? 
-		printf("{ \"collector\": \"nfssvrtop\", \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB_int\": %d, \"sync_write_KB_int\": %d, \"async_write_KB_int\": %d,\n \"clientdata\": [",
+		printf("{ \"collector\": \"nfssvrtop\", \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB_int\": %d, \"sync_write_KB_int\": %d, \"async_write_KB_int\": %d, \"clientdata\": [",
 			walltimestamp, walltimestamp, INTERVAL, 
 			self->load1a, self->load1b, 
 			total_read_b, total_swrite_b, total_awrite_b)
