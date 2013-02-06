@@ -272,7 +272,7 @@ profile:::tick-1sec
     OPT_clear && !OPT_json ? printf("%s", CLEAR) : 1;
 
     OPT_json ?
-        printf("{ \"collector\": \"iscsisvrtop\", \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB_int\": %d, \"write_KB_int\": %d, \n \"clientdata\": [",
+        printf("{ \"collector\": \"iscsisvrtop\", \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB_int\": %d, \"write_KB_int\": %d, \"clientdata\": [",
             walltimestamp, walltimestamp, INTERVAL, 
             self->load1a, self->load1b, 
             total_bytes_read, total_bytes_write)
