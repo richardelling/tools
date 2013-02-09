@@ -297,7 +297,7 @@ profile:::tick-1sec
     OPT_clear && !OPT_json ? printf("%s", CLEAR) : 1;
 
     OPT_json ? 
-        printf("{ \"collector\": \"cifssvrtop\", \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB_int\": %d, \"write_KB_int\": %d, \n \"clientdata\": [",
+        printf("{ \"collector\": \"cifssvrtop\", \"time\": \"%Y\", \"timestamp\": %d, \"interval\": %d, \"load\": %d.%02d, \"read_KB_int\": %d, \"write_KB_int\": %d, \"clientdata\": [",
             walltimestamp, walltimestamp, INTERVAL, 
             self->load1a, self->load1b, 
             total_read_bw, total_write_bw)
@@ -316,7 +316,7 @@ profile:::tick-1sec
     OPT_top ? trunc(@c_cifsops, TOP) : 1;
 
     OPT_json ?
-        printa("{\"client\": \"%s\", \"CIFSOPS\": %@d, \"reads\": %@d, \"writes\": %@d, \"read_bw\": %@d, \"write_bw\": %@d, \"avg_read_t\": %@d, \"avg_write_t\": %@d, \"aligned_pct\": %@d },\n",
+        printa("{\"client\": \"%s\", \"CIFSOPS\": %@d, \"reads\": %@d, \"writes\": %@d, \"read_bw\": %@d, \"write_bw\": %@d, \"avg_read_t\": %@d, \"avg_write_t\": %@d, \"aligned_pct\": %@d },",
             @c_cifsops, @c_read, @c_write, @read_bw, @write_bw,
             @avgtime_read, @avgtime_write, @avg_aligned)
     :
