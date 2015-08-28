@@ -64,6 +64,7 @@ pool=
 lines=-1
 interval=1
 count=-1
+zil_train=""
 
 ### process options
 while getopts hl:Mp:t name
@@ -130,6 +131,12 @@ if [[ "$interval" == "txg" ]]; then
     interval=0
 fi
 
+if [[ "$(uname -v)" -gt 11.2 ]] ; then
+    # zil_lwb_write_start() definition changed in Solaris 11.2
+    # args[0] is now struct zil_train instead of zilog_t
+    zw_zilog="->zw_zilog"
+fi
+
 ##############################
 # --- Main Program, DTrace ---
 
@@ -171,7 +178,7 @@ fi
   * collect info when zil_lwb_write_start fires
   */
 fbt::zil_lwb_write_start:entry
-/OPT_pool == 0 || POOL == args[0]->zl_dmu_pool->dp_spa->spa_name/
+/OPT_pool == 0 || POOL == args[0]'"$zw_zilog"'->zl_dmu_pool->dp_spa->spa_name/
 {
      nused += args[1]->lwb_nused;
      nused_per_sec += args[1]->lwb_nused;
