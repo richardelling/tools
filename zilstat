@@ -130,6 +130,13 @@ if [[ "$interval" == "txg" ]]; then
     interval=0
 fi
 
+if dtrace -lvn fbt::zil_lwb_write_start:entry | grep 'args\[0]: zil_writer_t' > /dev/null ; then
+    to_zilog="->zw_zilog"
+else
+    # args[0]: zilog_t
+    to_zilog=""
+fi
+
 ##############################
 # --- Main Program, DTrace ---
 
@@ -170,8 +177,9 @@ fi
  /*
   * collect info when zil_lwb_write_start fires
   */
+
 fbt::zil_lwb_write_start:entry
-/OPT_pool == 0 || POOL == args[0]->zl_dmu_pool->dp_spa->spa_name/
+/OPT_pool == 0 || POOL == args[0]'"$to_zilog"'->zl_dmu_pool->dp_spa->spa_name/
 {
      nused += args[1]->lwb_nused;
      nused_per_sec += args[1]->lwb_nused;
