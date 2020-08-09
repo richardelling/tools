@@ -18,7 +18,7 @@
 #
 # CDDL HEADER END
 # Portions Copyright 2009 Sun Microsystems, Inc.
-# Portions Copyright 2009 Richard Elling
+# Portions Copyright 2009-2020 Richard Elling
 #
 # File:   zilstat.ksh
 # Author: Richard.Elling@RichardElling.com
@@ -130,7 +130,15 @@ if [[ "$interval" == "txg" ]]; then
     interval=0
 fi
 
-lwb_write_arg0=`dtrace -lvn fbt::zil_lwb_write_start:entry | grep 'args\[0]:'| awk '{ print $2; }'`
+# in OpenZFS, zil_lwb_write_start() was renamed to zil_lwb_write_issue()
+# deal with the fbt changes here
+zil_lwb_write=zil_lwb_write_issue
+dtrace -l | grep -qs zil_lwb_write_start
+if [[ $? = 0 ]]; then
+    zil_lwb_write=zil_lwb_write_start
+fi
+
+lwb_write_arg0=$(dtrace -lvn fbt::${zil_lwb_write}:entry | awk '$1 == "args[0]:" { print $2; exit}')
 case $lwb_write_arg0 in
 	zil_writer_t )
 		# Solaris 11.2
@@ -195,7 +203,7 @@ esac
   * collect info when zil_lwb_write_start fires
   */
 
-fbt::zil_lwb_write_start:entry
+fbt::'${zil_lwb_write}':entry
 /OPT_pool == 0 || POOL == '"$to_zilog"'->zl_dmu_pool->dp_spa->spa_name/
 {
      nused += args['"$lwb_idx"']->lwb_nused;
